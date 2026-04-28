@@ -208,20 +208,22 @@ jobs:
         KSU_VERSION=$(cd KernelSU && expr $(/usr/bin/git rev-list --count HEAD) + 10200)
         echo "UPLOADNAME=-ReSukiSU_$KSU_VERSION" >> $GITHUB_ENV
 
-        # 2. Tải mã nguồn SUSFS v2.0.0
+        # 2. Tải mã nguồn SUSFS từ nhánh chính thức cho GKI 5.10 trên GitLab
         cd $GITHUB_WORKSPACE/kernel_workspace
-        git clone https://github.com/simonpunk/susfs4ksu.git -b v2.0.0
+        git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-android12-5.10
 
-        # 3. Apply Patch SUSFS cho Kernel 5.10
+        # 3. Apply Patch SUSFS cho ReSuki SU
         cd android-kernel
-        patch -p1 < ../susfs4ksu/kernel_patches/5.10/susfs.patch
-        patch -p1 < ../susfs4ksu/kernel_patches/5.10/susfs_ksu.patch
-        
-        # 4. Apply Patch SUSFS cho ReSuki SU (Bắt buộc cho v2.0.0 để tương thích)
         cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch KernelSU/
         cd KernelSU
         patch -p1 < 10_enable_susfs_for_ksu.patch
         cd ..
+
+        # 4. Apply Patch SUSFS cho Kernel 5.10
+        cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android12-5.10.patch .
+        cp -r ../susfs4ksu/kernel_patches/fs/* fs/
+        cp -r ../susfs4ksu/kernel_patches/include/linux/* include/linux/
+        patch -p1 < 50_add_susfs_in_gki-android12-5.10.patch
 
     - name: Setup Configuration for Kernel
       run: |
