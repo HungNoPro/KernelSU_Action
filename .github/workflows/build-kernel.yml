@@ -199,13 +199,29 @@ jobs:
             echo "HAVE_SOURCE_BOOT_IMAGE=true" >> $GITHUB_ENV
         fi
 
-    - name: Setup KernelSU
+    - name: Setup ReSuki SU & SUSFS
       if: env.ENABLE_KERNELSU == 'true'
       run: |
+        # 1. Tải và cài đặt ReSuki SU
         cd $GITHUB_WORKSPACE/kernel_workspace/android-kernel
-        curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s ${{ env.KERNELSU_TAG }}
+        curl -LSs "https://raw.githubusercontent.com/rsuntk/KernelSU/main/kernel/setup.sh" | bash -s ${{ env.KERNELSU_TAG }}
         KSU_VERSION=$(cd KernelSU && expr $(/usr/bin/git rev-list --count HEAD) + 10200)
-        echo "UPLOADNAME=-KernelSU_$KSU_VERSION" >> $GITHUB_ENV
+        echo "UPLOADNAME=-ReSukiSU_$KSU_VERSION" >> $GITHUB_ENV
+
+        # 2. Tải mã nguồn SUSFS v2.0.0
+        cd $GITHUB_WORKSPACE/kernel_workspace
+        git clone https://github.com/simonpunk/susfs4ksu.git -b v2.0.0
+
+        # 3. Apply Patch SUSFS cho Kernel 5.10
+        cd android-kernel
+        patch -p1 < ../susfs4ksu/kernel_patches/5.10/susfs.patch
+        patch -p1 < ../susfs4ksu/kernel_patches/5.10/susfs_ksu.patch
+        
+        # 4. Apply Patch SUSFS cho ReSuki SU (Bắt buộc cho v2.0.0 để tương thích)
+        cp ../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch KernelSU/
+        cd KernelSU
+        patch -p1 < 10_enable_susfs_for_ksu.patch
+        cd ..
 
     - name: Setup Configuration for Kernel
       run: |
@@ -358,3 +374,4 @@ jobs:
       with:
         name: boot${{ env.LOCALVERSION }}${{ env.UPLOADNAME }}-${{ env.DEVICE }}-${{ env.BUILD_TIME }}
         path: kernel_workspace/boot.img
+        
